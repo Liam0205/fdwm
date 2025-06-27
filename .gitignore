@@ -1,0 +1,31 @@
+# ==== FDWM generated / temp files ====
+__pycache__/
+*.py[cod]
+*.wm.png
+*.wm.txt
+.tmp*/
+tmp/
+.tmp/
+.DS_Store
+.env/
+.venv/
+env/
+tmp_*
+# =====================================
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
