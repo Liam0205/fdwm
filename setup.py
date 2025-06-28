@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="fdwm",
-    version="0.1.0",
+    version="0.2.1",
     author="Liam Huang",
     author_email="PyPI@liam.page",
     description="Frequency-domain watermarking library and CLI",
