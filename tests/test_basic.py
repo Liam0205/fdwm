@@ -13,7 +13,7 @@ import fdwm
 
 def test_import():
     """Test that the package can be imported."""
-    assert fdwm.__version__ == "0.2.0"
+    assert fdwm.__version__ == "0.2.1"
     assert fdwm.__author__ == "Liam Huang"
 
 
