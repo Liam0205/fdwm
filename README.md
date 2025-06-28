@@ -181,7 +181,7 @@ fdwm extract watermarked.jpg --text --region-type center
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.10+
 - numpy
 - opencv-python
 - Pillow
