@@ -28,7 +28,7 @@ def test_text_watermark():
     wm_text = "Watermark demo 123 ABC abc long text wrapping demonstration"
     strength = 30000.0  # Use consistent strength
 
-    fdwm.embed(
+    out_path, metrics = fdwm.embed(
         host_path=str(host_path),
         watermark_path=None,
         output_path=str(watermarked_path),

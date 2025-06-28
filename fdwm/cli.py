@@ -27,7 +27,7 @@ def _cmd_embed(args):
     print(f"Embedding watermark into {len(images)} image(s)...")
     for img_path in images:
         try:
-            embed(
+            out_path, metrics = embed(
                 host_path=img_path,
                 watermark_path=str(args.wm_img) if args.wm_img else None,
                 output_path=img_path,  # overwrite
@@ -36,8 +36,14 @@ def _cmd_embed(args):
                 scale=args.scale,
                 font_path=str(args.font) if args.font else None,
                 font_size=args.font_size,
+                debug=args.debug,
             )
             print(f"✔ Watermark applied: {img_path}")
+            if args.debug:
+                print(f"  Mean pixel diff: {metrics['mean_pixel_diff']:.2f}")
+                print(f"  Max pixel diff: {metrics['max_pixel_diff']:.2f}")
+                print(f"  90th percentile pixel diff: {metrics['p90_pixel_diff']:.2f}")
+                print(f"  PSNR: {metrics['psnr']:.2f} dB")
         except Exception as e:
             print(f"✖ Failed to watermark {img_path}: {e}", file=sys.stderr)
 
@@ -100,6 +106,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_embed.add_argument("--scale", type=float, default=0.25)
     p_embed.add_argument("--font", type=Path)
     p_embed.add_argument("--font-size", type=int)
+    p_embed.add_argument("--debug", action="store_true", help="Print detailed metrics for each processed image")
     p_embed.set_defaults(func=_cmd_embed)
 
     # extract subcommand

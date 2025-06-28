@@ -54,7 +54,7 @@ def test_visual_invisibility():
     original = cv2.imread(str(host_path), cv2.IMREAD_GRAYSCALE)
 
     # Embed watermark
-    fdwm.embed(
+    out_path, metrics = fdwm.embed(
         host_path=str(host_path),
         watermark_path=str(wm_path),
         output_path=str(watermarked_path),
@@ -110,7 +110,7 @@ def test_watermark_extraction_quality():
     generate_watermark(str(wm_path))
 
     # Embed watermark
-    fdwm.embed(
+    out_path, metrics = fdwm.embed(
         host_path=str(host_path),
         watermark_path=str(wm_path),
         output_path=str(watermarked_path),
@@ -177,7 +177,7 @@ def test_embed_extract_basic():
     scale = 0.25
 
     # Test basic embed and extract
-    fdwm.embed(
+    out_path, metrics = fdwm.embed(
         host_path=str(host_path),
         watermark_path=str(wm_path),
         output_path=str(watermarked_path),

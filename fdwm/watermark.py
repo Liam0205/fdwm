@@ -108,7 +108,8 @@ def embed(
     scale: float = 0.25,
     font_path: Optional[str] = None,
     font_size: Optional[int] = None,
-) -> Path:
+    debug: bool = False,
+) -> tuple[Path, dict]:
     """Embed watermark in frequency domain.
 
     Parameters
@@ -129,6 +130,15 @@ def embed(
         Path to font file for text watermark.
     font_size : int, optional
         Font size for text watermark.
+    debug : bool, default False
+        If True, print detailed metrics to stdout.
+
+    Returns
+    -------
+    output_path : Path
+        Path to the output watermarked image.
+    metrics : dict
+        Dictionary with keys: 'mean_pixel_diff', 'max_pixel_diff', 'p90_pixel_diff', 'psnr'.
     """
     host = _read_image(host_path, gray=True)
     rows, cols = host.shape
@@ -178,7 +188,22 @@ def embed(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(output_path), img_back)
-    return output_path
+
+    # Compute metrics
+    diff = np.abs(img_back.astype(np.float32) - host.astype(np.float32))
+    mean_pixel_diff = float(np.mean(diff))
+    max_pixel_diff = float(np.max(diff))
+    p90_pixel_diff = float(np.percentile(diff, 90))
+    mse = np.mean((img_back.astype(np.float32) - host.astype(np.float32)) ** 2)
+    psnr = float(20 * np.log10(255.0 / np.sqrt(mse))) if mse > 0 else float('inf')
+    metrics = {
+        'mean_pixel_diff': mean_pixel_diff,
+        'max_pixel_diff': max_pixel_diff,
+        'p90_pixel_diff': p90_pixel_diff,
+        'psnr': psnr,
+    }
+
+    return output_path, metrics
 
 
 def extract(

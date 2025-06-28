@@ -44,16 +44,22 @@ host_img = cv2.imread('host.jpg')
 watermark_img = cv2.imread('watermark.png')
 
 # Embed watermark in corners
-watermarked_img = embed(host_img, watermark_img, strength=0.1)
+out_path, metrics = embed(host_img, watermark_img, strength=0.1)
+print("Watermarked image saved to:", out_path)
+print("Metrics:", metrics)
 
 # Extract watermark
-extracted_watermark = extract(watermarked_img, watermark_img.shape[:2])
+extracted_watermark = extract(out_path, watermark_img.shape[:2])
 
 # For text watermarks
 text = "Hello World"
-watermarked_img = embed(host_img, text, strength=0.1, is_text=True)
-extracted_text = extract_text(watermarked_img)
+out_path, metrics = embed(host_img, None, 'watermarked.png', watermark_text=text, strength=0.1)
+extracted_text = extract_text(out_path)
 ```
+
+**Note:**
+- `embed` returns a tuple `(output_path, metrics)`.
+- `metrics` is a dict with keys: `'mean_pixel_diff'`, `'max_pixel_diff'`, `'p90_pixel_diff'`, `'psnr'`.
 
 ### Command Line Interface
 
