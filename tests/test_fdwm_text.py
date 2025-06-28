@@ -25,19 +25,20 @@ def test_text_watermark():
     generate_host_image(str(host_path))
 
     wm_text = "Watermark demo 123 ABC abc long text wrapping demonstration"
+    strength = 30000.0  # Use consistent strength
 
     fdwm.embed(
         host_path=str(host_path),
         watermark_path=None,
         output_path=str(watermarked_path),
         watermark_text=wm_text,
-        strength=30000.0,
+        strength=strength,
         scale=0.25,
     )
 
     extracted = fdwm.extract(
         watermarked_path=str(watermarked_path),
-        strength=30000.0,
+        strength=strength,
         scale=0.25,
         output_path=str(extracted_path),
     )
@@ -46,7 +47,7 @@ def test_text_watermark():
     try:
         text_rec = fdwm.extract_text(
             watermarked_path=str(watermarked_path),
-            strength=30000.0,
+            strength=strength,
             scale=0.25,
         )
         print("OCR recognition result:", text_rec)

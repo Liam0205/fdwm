@@ -36,6 +36,8 @@ def _cmd_embed(args):
                 scale=args.scale,
                 font_path=str(args.font) if args.font else None,
                 font_size=args.font_size,
+                region_type=args.region_type,
+                random_seed=args.random_seed,
             )
             print(f"✔ Watermark applied: {img_path}")
         except Exception as e:
@@ -59,6 +61,8 @@ def _cmd_extract(args):
                     watermarked_path=img_path,
                     strength=args.strength,
                     scale=args.scale,
+                    region_type=args.region_type,
+                    random_seed=args.random_seed,
                 )
                 print(f"[{img_path}] -> {txt}")
                 if args.save_text:
@@ -70,6 +74,8 @@ def _cmd_extract(args):
                     strength=args.strength,
                     scale=args.scale,
                     output_path=out_path,
+                    region_type=args.region_type,
+                    random_seed=args.random_seed,
                 )
                 print(f"✔ Watermark image saved: {out_path}")
         except Exception as e:
@@ -92,6 +98,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_embed.add_argument("--scale", type=float, default=0.25)
     p_embed.add_argument("--font", type=Path)
     p_embed.add_argument("--font-size", type=int)
+    p_embed.add_argument("--region-type", choices=["corners", "center", "random"], default="corners",
+                        help="Region type for watermark embedding: corners, center, or random")
+    p_embed.add_argument("--random-seed", type=int, default=42, help="Random seed for reproducible random embedding (default: 42)")
     p_embed.set_defaults(func=_cmd_embed)
 
     # extract subcommand
@@ -102,6 +111,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_ext.add_argument("--output", type=Path, help="Directory to save extracted watermark images/text")
     p_ext.add_argument("--text", action="store_true", help="Perform OCR and output text instead of image")
     p_ext.add_argument("--save-text", action="store_true", help="Save recognized text to .txt files")
+    p_ext.add_argument("--region-type", choices=["corners", "center", "random"], default="corners",
+                      help="Region type used during embedding: corners, center, or random")
+    p_ext.add_argument("--random-seed", type=int, default=42, help="Random seed used during embedding (default: 42)")
     p_ext.set_defaults(func=_cmd_extract)
 
     return parser

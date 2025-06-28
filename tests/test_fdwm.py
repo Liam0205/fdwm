@@ -80,5 +80,103 @@ def test_embed_extract():
     print("✅ Library functionality test passed!")
 
 
+def test_embed_extract_all_regions():
+    tmp_dir = Path("tmp_all_regions")
+    tmp_dir.mkdir(exist_ok=True)
+    host_path = tmp_dir / "host.png"
+    wm_path = tmp_dir / "wm.png"
+    watermarked_path = tmp_dir / "host_wm.png"
+    extracted_path = tmp_dir / "extracted.png"
+    generate_host_image(str(host_path))
+    generate_watermark(str(wm_path))
+    strength = 5000.0
+    scale = 0.25
+    # Test corners
+    fdwm.embed(
+        host_path=str(host_path),
+        watermark_path=str(wm_path),
+        output_path=str(watermarked_path),
+        strength=strength,
+        scale=scale,
+        region_type="corners",
+    )
+    extracted = fdwm.extract(
+        watermarked_path=str(watermarked_path),
+        strength=strength,
+        scale=scale,
+        output_path=str(extracted_path),
+        region_type="corners",
+    )
+    assert extracted.shape == (int(512*scale), int(512*scale))
+    # Test center
+    fdwm.embed(
+        host_path=str(host_path),
+        watermark_path=str(wm_path),
+        output_path=str(watermarked_path),
+        strength=strength,
+        scale=scale,
+        region_type="center",
+    )
+    extracted = fdwm.extract(
+        watermarked_path=str(watermarked_path),
+        strength=strength,
+        scale=scale,
+        output_path=str(extracted_path),
+        region_type="center",
+    )
+    assert extracted.shape == (int(512*scale), int(512*scale))
+    # Test random
+    fdwm.embed(
+        host_path=str(host_path),
+        watermark_path=str(wm_path),
+        output_path=str(watermarked_path),
+        strength=strength,
+        scale=scale,
+        region_type="random",
+        random_seed=123,
+    )
+    extracted = fdwm.extract(
+        watermarked_path=str(watermarked_path),
+        strength=strength,
+        scale=scale,
+        output_path=str(extracted_path),
+        region_type="random",
+        random_seed=123,
+    )
+    assert extracted.shape == (int(512*scale), int(512*scale))
+    # Test error: missing random_seed (should use default 42, so no error)
+    fdwm.embed(
+        host_path=str(host_path),
+        watermark_path=str(wm_path),
+        output_path=str(watermarked_path),
+        strength=strength,
+        scale=scale,
+        region_type="random",
+    )
+    extracted = fdwm.extract(
+        watermarked_path=str(watermarked_path),
+        strength=strength,
+        scale=scale,
+        output_path=str(extracted_path),
+        region_type="random",
+    )
+    assert extracted.shape == (int(512*scale), int(512*scale))
+    # Test error: invalid region_type
+    try:
+        fdwm.embed(
+            host_path=str(host_path),
+            watermark_path=str(wm_path),
+            output_path=str(watermarked_path),
+            strength=strength,
+            scale=scale,
+            region_type="invalid",
+        )
+    except ValueError as e:
+        assert "Invalid region_type" in str(e)
+    else:
+        assert False, "Expected ValueError for invalid region_type"
+
+
 if __name__ == "__main__":
     test_embed_extract()
+    test_embed_extract_all_regions()

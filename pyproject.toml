@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fdwm"
-version = "0.1.0"
+version = "0.2.0"
 description = "Frequency-domain watermarking library and CLI"
 readme = "README.md"
+requires-python = ">=3.8"
 license = "MIT"
 authors = [
     {name = "Liam Huang", email = "PyPI@liam.page"}
@@ -30,7 +31,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Image Processing",
     "Topic :: Security :: Cryptography",
 ]
-requires-python = ">=3.8"
 dependencies = [
     "numpy>=1.20",
     "opencv-python>=4.5",

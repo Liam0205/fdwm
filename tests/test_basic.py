@@ -5,7 +5,8 @@ from pathlib import Path
 import tempfile
 import numpy as np
 import cv2
-
+import sys
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 import fdwm
 
 

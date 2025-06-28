@@ -1,6 +1,6 @@
-"""Frequency-domain watermarking library and CLI."""
+"""Frequency-domain watermarking library."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Liam Huang"
 __email__ = "PyPI@liam.page"
 
