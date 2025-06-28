@@ -20,6 +20,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-chi-sim
+
       - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
