@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 import cv2
 import numpy as np
@@ -51,7 +52,9 @@ def test_text_watermark():
             scale=0.25,
         )
         print("OCR recognition result:", text_rec)
-        assert any(k in text_rec for k in ["Watermark", "ABC"]), "OCR recognition text mismatch."
+        assert any(
+            k in text_rec for k in ["Watermark", "ABC"]
+        ), "OCR recognition text mismatch."
     except RuntimeError as e:
         # skip OCR assertion when tesseract not installed
         print("Skip OCR test:", e)

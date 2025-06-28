@@ -55,7 +55,11 @@ def _text_to_image(
                 font = ImageFont.truetype(font_path, font_size)
             else:
                 try:
-                    font = ImageFont.truetype(fallback_font_path, font_size) if fallback_font_path else ImageFont.load_default()
+                    font = (
+                        ImageFont.truetype(fallback_font_path, font_size)
+                        if fallback_font_path
+                        else ImageFont.load_default()
+                    )
                 except Exception:
                     font = ImageFont.load_default()
         except Exception:
@@ -79,7 +83,9 @@ def _text_to_image(
             # Center draw
             x = (cols - text_w) // 2
             y = (rows - text_h) // 2
-            draw.multiline_text((x, y), wrapped, fill=255, font=font, spacing=4, align="center")
+            draw.multiline_text(
+                (x, y), wrapped, fill=255, font=font, spacing=4, align="center"
+            )
             return np.array(img)
 
         font_size -= 2  # font too large, decrease and retry
@@ -106,13 +112,17 @@ def _embed_center_region(host_dft_shift, watermark_norm, strength, cx, cy, regio
     # Resize watermark to fit center region
     center_rows = end_row - start_row
     center_cols = end_col - start_col
-    wm_resized = cv2.resize(watermark_norm, (center_cols, center_rows), interpolation=cv2.INTER_AREA)
+    wm_resized = cv2.resize(
+        watermark_norm, (center_cols, center_rows), interpolation=cv2.INTER_AREA
+    )
 
     # Embed in center region
     host_dft_shift[start_row:end_row, start_col:end_col] += strength * wm_resized
 
 
-def _embed_random_regions(host_dft_shift, watermark_norm, strength, seed, num_regions=5):
+def _embed_random_regions(
+    host_dft_shift, watermark_norm, strength, seed, num_regions=5
+):
     """Embed watermark in random regions using specified seed."""
     rows, cols = host_dft_shift.shape
     wm_rows, wm_cols = watermark_norm.shape
@@ -138,7 +148,9 @@ def _embed_random_regions(host_dft_shift, watermark_norm, strength, seed, num_re
             wm_transformed = np.flipud(wm_transformed)
 
         # Embed in random region
-        host_dft_shift[start_row:start_row+wm_rows, start_col:start_col+wm_cols] += region_strength * wm_transformed
+        host_dft_shift[
+            start_row : start_row + wm_rows, start_col : start_col + wm_cols
+        ] += (region_strength * wm_transformed)
 
 
 def embed(
@@ -209,19 +221,27 @@ def embed(
         host_dft_shift[0:wm_rows, 0:wm_cols] += strength * watermark_norm
 
         # 2. Bottom-right corner (flipped, weak signal)
-        host_dft_shift[rows-wm_rows:rows, cols-wm_cols:cols] += (0.5 * strength) * np.flipud(np.fliplr(watermark_norm))
+        host_dft_shift[rows - wm_rows : rows, cols - wm_cols : cols] += (
+            0.5 * strength
+        ) * np.flipud(np.fliplr(watermark_norm))
 
         # 3. Top-right corner (weak signal)
-        host_dft_shift[0:wm_rows, cols-wm_cols:cols] += (0.5 * strength) * np.fliplr(watermark_norm)
+        host_dft_shift[0:wm_rows, cols - wm_cols : cols] += (
+            0.5 * strength
+        ) * np.fliplr(watermark_norm)
 
         # 4. Bottom-left corner (weak signal)
-        host_dft_shift[rows-wm_rows:rows, 0:wm_cols] += (0.5 * strength) * np.flipud(watermark_norm)
+        host_dft_shift[rows - wm_rows : rows, 0:wm_cols] += (
+            0.5 * strength
+        ) * np.flipud(watermark_norm)
 
     elif region_type == "center":
         # Embed in center region only
         cx, cy = rows // 2, cols // 2
         center_region_size = int(min(rows, cols) * 0.3)  # 30% of image size
-        _embed_center_region(host_dft_shift, watermark_norm, strength, cx, cy, center_region_size)
+        _embed_center_region(
+            host_dft_shift, watermark_norm, strength, cx, cy, center_region_size
+        )
 
     elif region_type == "random":
         # Embed in random regions
@@ -230,7 +250,9 @@ def embed(
         _embed_random_regions(host_dft_shift, watermark_norm, strength, random_seed)
 
     else:
-        raise ValueError(f"Invalid region_type: {region_type}. Must be one of: corners, center, random")
+        raise ValueError(
+            f"Invalid region_type: {region_type}. Must be one of: corners, center, random"
+        )
 
     # Inverse transform
     host_idft_shift = np.fft.ifftshift(host_dft_shift)
@@ -258,7 +280,9 @@ def _extract_center_region(img_dft_shift, wm_shape, cx, cy, region_size):
     center_region = img_dft_shift[start_row:end_row, start_col:end_col]
 
     # Resize to watermark shape
-    wm_resized = cv2.resize(np.abs(center_region), (wm_cols, wm_rows), interpolation=cv2.INTER_AREA)
+    wm_resized = cv2.resize(
+        np.abs(center_region), (wm_cols, wm_rows), interpolation=cv2.INTER_AREA
+    )
 
     return wm_resized
 
@@ -281,7 +305,9 @@ def _extract_random_regions(img_dft_shift, wm_shape, seed, num_regions=5):
         start_col = random.randint(0, cols - wm_cols)
 
         # Extract region
-        region = img_dft_shift[start_row:start_row+wm_rows, start_col:start_col+wm_cols]
+        region = img_dft_shift[
+            start_row : start_row + wm_rows, start_col : start_col + wm_cols
+        ]
         extracted_regions.append(np.abs(region))
 
     # Average all extracted regions
@@ -325,7 +351,9 @@ def extract(
     rows, cols = img.shape
 
     if scale is None and watermark_shape is None:
-        raise ValueError("Must provide either scale or watermark_shape to determine watermark size.")
+        raise ValueError(
+            "Must provide either scale or watermark_shape to determine watermark size."
+        )
     if scale is not None:
         wm_rows = int(rows * scale)
         wm_cols = int(cols * scale)
@@ -339,14 +367,16 @@ def extract(
         # Extract from four corner regions
         regions = [
             img_dft_shift[0:wm_rows, 0:wm_cols],  # Top-left (main)
-            img_dft_shift[rows-wm_rows:rows, cols-wm_cols:cols],  # Bottom-right
-            img_dft_shift[0:wm_rows, cols-wm_cols:cols],  # Top-right
-            img_dft_shift[rows-wm_rows:rows, 0:wm_cols],  # Bottom-left
+            img_dft_shift[rows - wm_rows : rows, cols - wm_cols : cols],  # Bottom-right
+            img_dft_shift[0:wm_rows, cols - wm_cols : cols],  # Top-right
+            img_dft_shift[rows - wm_rows : rows, 0:wm_cols],  # Bottom-left
         ]
 
         # Normalize all regions
         wm_candidates = [np.abs(r) / strength for r in regions]
-        wm_candidates[1:] = [w / 0.5 for w in wm_candidates[1:]]  # Bottom-right/Top-right/Bottom-left regions divide by 0.5
+        wm_candidates[1:] = [
+            w / 0.5 for w in wm_candidates[1:]
+        ]  # Bottom-right/Top-right/Bottom-left regions divide by 0.5
 
         # Normalize to 0-1
         normed = []
@@ -356,13 +386,17 @@ def extract(
             normed.append(w)
 
         # Fusion: main region has higher weight, corners are weaker
-        fused = np.maximum(0.6 * normed[0], 0.133 * normed[1] + 0.133 * normed[2] + 0.133 * normed[3])
+        fused = np.maximum(
+            0.6 * normed[0], 0.133 * normed[1] + 0.133 * normed[2] + 0.133 * normed[3]
+        )
 
     elif region_type == "center":
         # Extract from center region only
         cx, cy = rows // 2, cols // 2
         center_region_size = int(min(rows, cols) * 0.3)
-        center = _extract_center_region(img_dft_shift, (wm_rows, wm_cols), cx, cy, center_region_size)
+        center = _extract_center_region(
+            img_dft_shift, (wm_rows, wm_cols), cx, cy, center_region_size
+        )
 
         # Normalize center region
         center = center / strength
@@ -382,7 +416,9 @@ def extract(
         fused = fused / fused.max() if fused.max() != 0 else fused
 
     else:
-        raise ValueError(f"Invalid region_type: {region_type}. Must be one of: corners, center, random")
+        raise ValueError(
+            f"Invalid region_type: {region_type}. Must be one of: corners, center, random"
+        )
 
     fused = np.clip(fused, 0, 1)
     wm_uint8 = (fused * 255).astype(np.uint8)
@@ -432,7 +468,7 @@ def extract_text(
 
     h, w = th.shape
     # Fixed 4x scaling for better OCR
-    th = cv2.resize(th, (w*4, h*4), interpolation=cv2.INTER_NEAREST)
+    th = cv2.resize(th, (w * 4, h * 4), interpolation=cv2.INTER_NEAREST)
 
     pil_img = Image.fromarray(th)
 

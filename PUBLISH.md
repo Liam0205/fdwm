@@ -14,7 +14,7 @@ This guide will help you publish the FDWM package to PyPI (Python Package Index)
 
 ### 1. Build the Package
 
-```bash
+   ```bash
 # Clean previous builds
 rm -rf dist/ build/ *.egg-info/
 
@@ -30,19 +30,19 @@ This will generate two files:
 
 Before publishing, it's recommended to check the package contents:
 
-```bash
+   ```bash
 # Check source distribution
 twine check dist/fdwm-0.1.0.tar.gz
 
 # Check wheel distribution
 twine check dist/fdwm-0.1.0-py3-none-any.whl
-```
+   ```
 
 ### 3. Test Upload to TestPyPI
 
 Before publishing to the official PyPI, it's recommended to test on TestPyPI first:
 
-```bash
+   ```bash
 # Upload to TestPyPI
 twine upload --repository testpypi dist/*
 
@@ -54,10 +54,10 @@ pip install --index-url https://test.pypi.org/simple/ fdwm
 
 If the test is successful, you can publish to the official PyPI:
 
-```bash
+   ```bash
 # Upload to PyPI
 twine upload dist/*
-```
+   ```
 
 The system will prompt you for your PyPI username and password.
 
@@ -65,13 +65,13 @@ The system will prompt you for your PyPI username and password.
 
 After publishing, you can verify it by:
 
-```bash
+   ```bash
 # Install the package
-pip install fdwm
+   pip install fdwm
 
 # Test CLI
 fdwm --help
-```
+   ```
 
 ## Version Management
 
@@ -121,9 +121,9 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        python -m build
+   python -m build
         twine upload dist/*
-```
+   ```
 
 ## Security Tips
 

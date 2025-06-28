@@ -83,24 +83,41 @@ def _cmd_extract(args):
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="fdwm", description="Frequency-domain watermark CLI")
+    parser = argparse.ArgumentParser(
+        prog="fdwm", description="Frequency-domain watermark CLI"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     # embed subcommand
     p_embed = sub.add_parser("embed", help="Embed watermark into image(s)")
-    p_embed.add_argument("host", type=Path, help="Image file or directory to embed watermark")
+    p_embed.add_argument(
+        "host", type=Path, help="Image file or directory to embed watermark"
+    )
 
     wm_group = p_embed.add_mutually_exclusive_group(required=True)
-    wm_group.add_argument("--watermark-img", type=Path, dest="wm_img", help="Watermark image path")
-    wm_group.add_argument("--watermark-text", type=str, dest="wm_text", help="Watermark text")
+    wm_group.add_argument(
+        "--watermark-img", type=Path, dest="wm_img", help="Watermark image path"
+    )
+    wm_group.add_argument(
+        "--watermark-text", type=str, dest="wm_text", help="Watermark text"
+    )
 
     p_embed.add_argument("--strength", type=float, default=30000.0)
     p_embed.add_argument("--scale", type=float, default=0.25)
     p_embed.add_argument("--font", type=Path)
     p_embed.add_argument("--font-size", type=int)
-    p_embed.add_argument("--region-type", choices=["corners", "center", "random"], default="corners",
-                        help="Region type for watermark embedding: corners, center, or random")
-    p_embed.add_argument("--random-seed", type=int, default=42, help="Random seed for reproducible random embedding (default: 42)")
+    p_embed.add_argument(
+        "--region-type",
+        choices=["corners", "center", "random"],
+        default="corners",
+        help="Region type for watermark embedding: corners, center, or random",
+    )
+    p_embed.add_argument(
+        "--random-seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducible random embedding (default: 42)",
+    )
     p_embed.set_defaults(func=_cmd_embed)
 
     # extract subcommand
@@ -108,12 +125,29 @@ def build_parser() -> argparse.ArgumentParser:
     p_ext.add_argument("input", type=Path, help="Watermarked image file or directory")
     p_ext.add_argument("--strength", type=float, default=30000.0)
     p_ext.add_argument("--scale", type=float, default=0.25)
-    p_ext.add_argument("--output", type=Path, help="Directory to save extracted watermark images/text")
-    p_ext.add_argument("--text", action="store_true", help="Perform OCR and output text instead of image")
-    p_ext.add_argument("--save-text", action="store_true", help="Save recognized text to .txt files")
-    p_ext.add_argument("--region-type", choices=["corners", "center", "random"], default="corners",
-                      help="Region type used during embedding: corners, center, or random")
-    p_ext.add_argument("--random-seed", type=int, default=42, help="Random seed used during embedding (default: 42)")
+    p_ext.add_argument(
+        "--output", type=Path, help="Directory to save extracted watermark images/text"
+    )
+    p_ext.add_argument(
+        "--text",
+        action="store_true",
+        help="Perform OCR and output text instead of image",
+    )
+    p_ext.add_argument(
+        "--save-text", action="store_true", help="Save recognized text to .txt files"
+    )
+    p_ext.add_argument(
+        "--region-type",
+        choices=["corners", "center", "random"],
+        default="corners",
+        help="Region type used during embedding: corners, center, or random",
+    )
+    p_ext.add_argument(
+        "--random-seed",
+        type=int,
+        default=42,
+        help="Random seed used during embedding (default: 42)",
+    )
     p_ext.set_defaults(func=_cmd_extract)
 
     return parser

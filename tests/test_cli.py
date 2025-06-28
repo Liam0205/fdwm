@@ -4,6 +4,7 @@ import tempfile
 import cv2
 import numpy as np
 import sys
+
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 import fdwm
 

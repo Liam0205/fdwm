@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 import cv2
 import numpy as np
@@ -74,7 +75,9 @@ def test_embed_extract():
 
     # calculate Pearson correlation coefficient
     corr = np.corrcoef(wm_resized.flatten(), extracted.flatten())[0, 1]
-    print(f"Correlation coefficient between original and extracted watermark: {corr:.3f}")
+    print(
+        f"Correlation coefficient between original and extracted watermark: {corr:.3f}"
+    )
 
     assert corr > 0.5, "Watermark extraction correlation too low, possible issue."
     print("✅ Library functionality test passed!")
@@ -107,7 +110,7 @@ def test_embed_extract_all_regions():
         output_path=str(extracted_path),
         region_type="corners",
     )
-    assert extracted.shape == (int(512*scale), int(512*scale))
+    assert extracted.shape == (int(512 * scale), int(512 * scale))
     # Test center
     fdwm.embed(
         host_path=str(host_path),
@@ -124,7 +127,7 @@ def test_embed_extract_all_regions():
         output_path=str(extracted_path),
         region_type="center",
     )
-    assert extracted.shape == (int(512*scale), int(512*scale))
+    assert extracted.shape == (int(512 * scale), int(512 * scale))
     # Test random
     fdwm.embed(
         host_path=str(host_path),
@@ -143,7 +146,7 @@ def test_embed_extract_all_regions():
         region_type="random",
         random_seed=123,
     )
-    assert extracted.shape == (int(512*scale), int(512*scale))
+    assert extracted.shape == (int(512 * scale), int(512 * scale))
     # Test error: missing random_seed (should use default 42, so no error)
     fdwm.embed(
         host_path=str(host_path),
@@ -160,7 +163,7 @@ def test_embed_extract_all_regions():
         output_path=str(extracted_path),
         region_type="random",
     )
-    assert extracted.shape == (int(512*scale), int(512*scale))
+    assert extracted.shape == (int(512 * scale), int(512 * scale))
     # Test error: invalid region_type
     try:
         fdwm.embed(
