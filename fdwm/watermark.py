@@ -98,61 +98,6 @@ def _text_to_image(
     return np.array(img)
 
 
-def _embed_center_region(host_dft_shift, watermark_norm, strength, cx, cy, region_size):
-    """Embed watermark in the center region of the frequency domain."""
-    rows, cols = host_dft_shift.shape
-    wm_rows, wm_cols = watermark_norm.shape
-
-    # Calculate center region boundaries
-    start_row = max(0, cx - region_size // 2)
-    end_row = min(rows, cx + region_size // 2)
-    start_col = max(0, cy - region_size // 2)
-    end_col = min(cols, cy + region_size // 2)
-
-    # Resize watermark to fit center region
-    center_rows = end_row - start_row
-    center_cols = end_col - start_col
-    wm_resized = cv2.resize(
-        watermark_norm, (center_cols, center_rows), interpolation=cv2.INTER_AREA
-    )
-
-    # Embed in center region
-    host_dft_shift[start_row:end_row, start_col:end_col] += strength * wm_resized
-
-
-def _embed_random_regions(
-    host_dft_shift, watermark_norm, strength, seed, num_regions=5
-):
-    """Embed watermark in random regions using specified seed."""
-    rows, cols = host_dft_shift.shape
-    wm_rows, wm_cols = watermark_norm.shape
-
-    # Set random seed for reproducible embedding
-    random.seed(seed)
-    np.random.seed(seed)
-
-    # Generate random positions for embedding
-    for i in range(num_regions):
-        # Random position within valid bounds
-        start_row = random.randint(0, rows - wm_rows)
-        start_col = random.randint(0, cols - wm_cols)
-
-        # Random strength variation
-        region_strength = strength * random.uniform(0.3, 1.0)
-
-        # Random transformation (flip, rotate, etc.)
-        wm_transformed = watermark_norm.copy()
-        if random.choice([True, False]):
-            wm_transformed = np.fliplr(wm_transformed)
-        if random.choice([True, False]):
-            wm_transformed = np.flipud(wm_transformed)
-
-        # Embed in random region
-        host_dft_shift[
-            start_row : start_row + wm_rows, start_col : start_col + wm_cols
-        ] += (region_strength * wm_transformed)
-
-
 def embed(
     host_path: str | Path,
     watermark_path: Optional[str | Path],
@@ -163,10 +108,8 @@ def embed(
     scale: float = 0.25,
     font_path: Optional[str] = None,
     font_size: Optional[int] = None,
-    region_type: Literal["corners", "center", "random"] = "corners",
-    random_seed: Optional[int] = 42,
 ) -> Path:
-    """Embed watermark in frequency domain with selectable regions.
+    """Embed watermark in frequency domain.
 
     Parameters
     ----------
@@ -186,13 +129,6 @@ def embed(
         Path to font file for text watermark.
     font_size : int, optional
         Font size for text watermark.
-    region_type : {"corners", "center", "random"}, default "corners"
-        Type of regions to embed watermark:
-        - "corners": Embed in four corners (top-left, top-right, bottom-left, bottom-right)
-        - "center": Embed in center region
-        - "random": Embed in random regions using seed
-    random_seed : int, optional
-        Random seed for reproducible random embedding (required when region_type="random").
     """
     host = _read_image(host_path, gray=True)
     rows, cols = host.shape
@@ -215,44 +151,24 @@ def embed(
     host_dft = np.fft.fft2(host)
     host_dft_shift = np.fft.fftshift(host_dft)
 
-    if region_type == "corners":
-        # Embed in four corners
-        # 1. Top-left corner (main region, strong signal)
-        host_dft_shift[0:wm_rows, 0:wm_cols] += strength * watermark_norm
+    # Embed in four corners
+    # 1. Top-left corner (main region, strong signal)
+    host_dft_shift[0:wm_rows, 0:wm_cols] += strength * watermark_norm
 
-        # 2. Bottom-right corner (flipped, weak signal)
-        host_dft_shift[rows - wm_rows : rows, cols - wm_cols : cols] += (
-            0.5 * strength
-        ) * np.flipud(np.fliplr(watermark_norm))
+    # 2. Bottom-right corner (flipped, weak signal)
+    host_dft_shift[rows - wm_rows : rows, cols - wm_cols : cols] += (
+        0.5 * strength
+    ) * np.flipud(np.fliplr(watermark_norm))
 
-        # 3. Top-right corner (weak signal)
-        host_dft_shift[0:wm_rows, cols - wm_cols : cols] += (
-            0.5 * strength
-        ) * np.fliplr(watermark_norm)
+    # 3. Top-right corner (weak signal)
+    host_dft_shift[0:wm_rows, cols - wm_cols : cols] += (
+        0.5 * strength
+    ) * np.fliplr(watermark_norm)
 
-        # 4. Bottom-left corner (weak signal)
-        host_dft_shift[rows - wm_rows : rows, 0:wm_cols] += (
-            0.5 * strength
-        ) * np.flipud(watermark_norm)
-
-    elif region_type == "center":
-        # Embed in center region only
-        cx, cy = rows // 2, cols // 2
-        center_region_size = int(min(rows, cols) * 0.3)  # 30% of image size
-        _embed_center_region(
-            host_dft_shift, watermark_norm, strength, cx, cy, center_region_size
-        )
-
-    elif region_type == "random":
-        # Embed in random regions
-        if random_seed is None:
-            raise ValueError("random_seed must be provided when region_type='random'")
-        _embed_random_regions(host_dft_shift, watermark_norm, strength, random_seed)
-
-    else:
-        raise ValueError(
-            f"Invalid region_type: {region_type}. Must be one of: corners, center, random"
-        )
+    # 4. Bottom-left corner (weak signal)
+    host_dft_shift[rows - wm_rows : rows, 0:wm_cols] += (
+        0.5 * strength
+    ) * np.flipud(watermark_norm)
 
     # Inverse transform
     host_idft_shift = np.fft.ifftshift(host_dft_shift)
@@ -265,59 +181,6 @@ def embed(
     return output_path
 
 
-def _extract_center_region(img_dft_shift, wm_shape, cx, cy, region_size):
-    """Extract watermark from the center region of the frequency domain."""
-    rows, cols = img_dft_shift.shape
-    wm_rows, wm_cols = wm_shape
-
-    # Calculate center region boundaries
-    start_row = max(0, cx - region_size // 2)
-    end_row = min(rows, cx + region_size // 2)
-    start_col = max(0, cy - region_size // 2)
-    end_col = min(cols, cy + region_size // 2)
-
-    # Extract center region
-    center_region = img_dft_shift[start_row:end_row, start_col:end_col]
-
-    # Resize to watermark shape
-    wm_resized = cv2.resize(
-        np.abs(center_region), (wm_cols, wm_rows), interpolation=cv2.INTER_AREA
-    )
-
-    return wm_resized
-
-
-def _extract_random_regions(img_dft_shift, wm_shape, seed, num_regions=5):
-    """Extract watermark from random regions using specified seed."""
-    rows, cols = img_dft_shift.shape
-    wm_rows, wm_cols = wm_shape
-
-    # Set random seed for reproducible extraction
-    random.seed(seed)
-    np.random.seed(seed)
-
-    extracted_regions = []
-
-    # Generate same random positions as embedding
-    for i in range(num_regions):
-        # Same random position as embedding
-        start_row = random.randint(0, rows - wm_rows)
-        start_col = random.randint(0, cols - wm_cols)
-
-        # Extract region
-        region = img_dft_shift[
-            start_row : start_row + wm_rows, start_col : start_col + wm_cols
-        ]
-        extracted_regions.append(np.abs(region))
-
-    # Average all extracted regions
-    if extracted_regions:
-        avg_region = np.mean(extracted_regions, axis=0)
-        return avg_region
-    else:
-        return np.zeros((wm_rows, wm_cols))
-
-
 def extract(
     watermarked_path: str | Path,
     *,
@@ -325,10 +188,8 @@ def extract(
     scale: Optional[float] = 0.25,
     watermark_shape: Optional[Tuple[int, int]] = None,
     output_path: Optional[str | Path] = None,
-    region_type: Literal["corners", "center", "random"] = "corners",
-    random_seed: Optional[int] = 42,
 ) -> np.ndarray:
-    """Extract watermark image from a watermarked picture with selectable regions.
+    """Extract watermark image from a watermarked picture.
 
     Parameters
     ----------
@@ -342,10 +203,6 @@ def extract(
         Watermark shape (rows, cols).
     output_path : str | Path, optional
         Path to save extracted watermark.
-    region_type : {"corners", "center", "random"}, default "corners"
-        Type of regions used during embedding.
-    random_seed : int, optional
-        Random seed used during embedding (required when region_type="random").
     """
     img = _read_image(watermarked_path, gray=True)
     rows, cols = img.shape
@@ -363,62 +220,39 @@ def extract(
     img_dft = np.fft.fft2(img)
     img_dft_shift = np.fft.fftshift(img_dft)
 
-    if region_type == "corners":
-        # Extract from four corner regions
-        regions = [
-            img_dft_shift[0:wm_rows, 0:wm_cols],  # Top-left (main)
-            img_dft_shift[rows - wm_rows : rows, cols - wm_cols : cols],  # Bottom-right
-            img_dft_shift[0:wm_rows, cols - wm_cols : cols],  # Top-right
-            img_dft_shift[rows - wm_rows : rows, 0:wm_cols],  # Bottom-left
-        ]
+    # Extract from four corner regions
+    regions = [
+        img_dft_shift[0:wm_rows, 0:wm_cols],  # Top-left (main)
+        img_dft_shift[rows - wm_rows : rows, cols - wm_cols : cols],  # Bottom-right
+        img_dft_shift[0:wm_rows, cols - wm_cols : cols],  # Top-right
+        img_dft_shift[rows - wm_rows : rows, 0:wm_cols],  # Bottom-left
+    ]
 
-        # Normalize all regions
-        wm_candidates = [np.abs(r) / strength for r in regions]
-        wm_candidates[1:] = [
-            w / 0.5 for w in wm_candidates[1:]
-        ]  # Bottom-right/Top-right/Bottom-left regions divide by 0.5
+    # Extract magnitude from each region
+    wm_candidates = []
+    for i, r in enumerate(regions):
+        magnitude = np.abs(r)
+        # Apply strength normalization
+        if i == 0:  # Main region (top-left)
+            normalized = magnitude / strength
+        else:  # Corner regions
+            normalized = magnitude / (0.5 * strength)
+        # Apply inverse transformations for corner regions
+        if i == 1:  # Bottom-right: flip both axes
+            normalized = np.flipud(np.fliplr(normalized))
+        elif i == 2:  # Top-right: flip horizontally
+            normalized = np.fliplr(normalized)
+        elif i == 3:  # Bottom-left: flip vertically
+            normalized = np.flipud(normalized)
+        wm_candidates.append(normalized)
 
-        # Normalize to 0-1
-        normed = []
-        for w in wm_candidates:
-            w = w - w.min()
-            w = w / w.max() if w.max() != 0 else w
-            normed.append(w)
+    # Average all regions
+    fused = np.mean(wm_candidates, axis=0)
 
-        # Fusion: main region has higher weight, corners are weaker
-        fused = np.maximum(
-            0.6 * normed[0], 0.133 * normed[1] + 0.133 * normed[2] + 0.133 * normed[3]
-        )
-
-    elif region_type == "center":
-        # Extract from center region only
-        cx, cy = rows // 2, cols // 2
-        center_region_size = int(min(rows, cols) * 0.3)
-        center = _extract_center_region(
-            img_dft_shift, (wm_rows, wm_cols), cx, cy, center_region_size
-        )
-
-        # Normalize center region
-        center = center / strength
-        center = center - center.min()
-        center = center / center.max() if center.max() != 0 else center
-        fused = center
-
-    elif region_type == "random":
-        # Extract from random regions
-        if random_seed is None:
-            raise ValueError("random_seed must be provided when region_type='random'")
-        fused = _extract_random_regions(img_dft_shift, (wm_rows, wm_cols), random_seed)
-
-        # Normalize random regions
-        fused = fused / strength
-        fused = fused - fused.min()
-        fused = fused / fused.max() if fused.max() != 0 else fused
-
-    else:
-        raise ValueError(
-            f"Invalid region_type: {region_type}. Must be one of: corners, center, random"
-        )
+    # Normalize
+    fused = np.clip(fused, 0, None)
+    if fused.max() > 0:
+        fused = fused / fused.max()
 
     fused = np.clip(fused, 0, 1)
     wm_uint8 = (fused * 255).astype(np.uint8)
@@ -438,8 +272,6 @@ def extract_text(
     watermark_shape: Optional[Tuple[int, int]] = None,
     lang: str = "chi_sim+eng",
     tesseract_cmd: Optional[str] = None,
-    region_type: Literal["corners", "center", "random"] = "corners",
-    random_seed: Optional[int] = 42,
 ) -> str:
     """Extract text watermark from watermarked image.
 
@@ -454,8 +286,6 @@ def extract_text(
         scale=scale,
         watermark_shape=watermark_shape,
         output_path=None,
-        region_type=region_type,
-        random_seed=random_seed,
     )
 
     # preprocessing: binarization + scaling

@@ -60,7 +60,6 @@ def test_visual_invisibility():
         output_path=str(watermarked_path),
         strength=kStrength,
         scale=0.25,
-        region_type="corners",
     )
 
     # Read watermarked image
@@ -117,7 +116,6 @@ def test_watermark_extraction_quality():
         output_path=str(watermarked_path),
         strength=kStrength,
         scale=0.25,
-        region_type="corners",
     )
 
     # Extract watermark
@@ -126,7 +124,6 @@ def test_watermark_extraction_quality():
         strength=kStrength,
         scale=0.25,
         output_path=str(extracted_path),
-        region_type="corners",
     )
 
     # Read original watermark and resize to match extracted size
@@ -167,8 +164,9 @@ def test_watermark_extraction_quality():
     print("✅ Watermark extraction quality test passed!")
 
 
-def test_embed_extract_all_regions():
-    tmp_dir = Path("tmp_all_regions")
+def test_embed_extract_basic():
+    """Test basic embed and extract functionality."""
+    tmp_dir = Path("tmp_basic")
     tmp_dir.mkdir(exist_ok=True)
     host_path = tmp_dir / "host.png"
     wm_path = tmp_dir / "wm.png"
@@ -177,93 +175,26 @@ def test_embed_extract_all_regions():
     generate_host_image(str(host_path))
     generate_watermark(str(wm_path))
     scale = 0.25
-    # Test corners
+
+    # Test basic embed and extract
     fdwm.embed(
         host_path=str(host_path),
         watermark_path=str(wm_path),
         output_path=str(watermarked_path),
         strength=kStrength,
         scale=scale,
-        region_type="corners",
     )
     extracted = fdwm.extract(
         watermarked_path=str(watermarked_path),
         strength=kStrength,
         scale=scale,
         output_path=str(extracted_path),
-        region_type="corners",
     )
     assert extracted.shape == (int(512 * scale), int(512 * scale))
-    # Test center
-    fdwm.embed(
-        host_path=str(host_path),
-        watermark_path=str(wm_path),
-        output_path=str(watermarked_path),
-        strength=kStrength,
-        scale=scale,
-        region_type="center",
-    )
-    extracted = fdwm.extract(
-        watermarked_path=str(watermarked_path),
-        strength=kStrength,
-        scale=scale,
-        output_path=str(extracted_path),
-        region_type="center",
-    )
-    assert extracted.shape == (int(512 * scale), int(512 * scale))
-    # Test random
-    fdwm.embed(
-        host_path=str(host_path),
-        watermark_path=str(wm_path),
-        output_path=str(watermarked_path),
-        strength=kStrength,
-        scale=scale,
-        region_type="random",
-        random_seed=123,
-    )
-    extracted = fdwm.extract(
-        watermarked_path=str(watermarked_path),
-        strength=kStrength,
-        scale=scale,
-        output_path=str(extracted_path),
-        region_type="random",
-        random_seed=123,
-    )
-    assert extracted.shape == (int(512 * scale), int(512 * scale))
-    # Test error: missing random_seed (should use default 42, so no error)
-    fdwm.embed(
-        host_path=str(host_path),
-        watermark_path=str(wm_path),
-        output_path=str(watermarked_path),
-        strength=kStrength,
-        scale=scale,
-        region_type="random",
-    )
-    extracted = fdwm.extract(
-        watermarked_path=str(watermarked_path),
-        strength=kStrength,
-        scale=scale,
-        output_path=str(extracted_path),
-        region_type="random",
-    )
-    assert extracted.shape == (int(512 * scale), int(512 * scale))
-    # Test error: invalid region_type
-    try:
-        fdwm.embed(
-            host_path=str(host_path),
-            watermark_path=str(wm_path),
-            output_path=str(watermarked_path),
-            strength=kStrength,
-            scale=scale,
-            region_type="invalid",  # type: ignore
-        )
-    except ValueError as e:
-        assert "Invalid region_type" in str(e)
-    else:
-        assert False, "Expected ValueError for invalid region_type"
+    print("✅ Basic embed and extract test passed!")
 
 
 if __name__ == "__main__":
     test_visual_invisibility()
     test_watermark_extraction_quality()
-    test_embed_extract_all_regions()
+    test_embed_extract_basic()
