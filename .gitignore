@@ -30,3 +30,6 @@ dist/
 .coverage
 htmlcov/
 coverage.xml
+
+# Evaluating
+evaluation_*
