@@ -57,14 +57,16 @@ def test_embed_extract_workflow():
 
         try:
             # Test embedding
-            result_path = fdwm.embed(
+            out_path, metrics = fdwm.embed(
                 host_path=str(host_path),
                 watermark_path=str(wm_path),
                 output_path=str(watermarked_path),
                 strength=1000.0,
                 scale=0.25,
+                grid_m=3,
+                grid_n=3,
             )
-            assert result_path.exists()
+            assert out_path.exists()
 
             # Test extraction
             extracted = fdwm.extract(
@@ -72,6 +74,8 @@ def test_embed_extract_workflow():
                 strength=1000.0,
                 scale=0.25,
                 output_path=str(extracted_path),
+                grid_m=3,
+                grid_n=3,
             )
             assert extracted is not None
             assert extracted.shape == (25, 25)
@@ -95,15 +99,17 @@ def test_text_watermark():
 
         try:
             # Test text embedding
-            result_path = fdwm.embed(
+            out_path, metrics = fdwm.embed(
                 host_path=str(host_path),
                 watermark_path=None,
                 output_path=str(watermarked_path),
                 watermark_text="TEST",
                 strength=1000.0,
                 scale=0.25,
+                grid_m=3,
+                grid_n=3,
             )
-            assert result_path.exists()
+            assert out_path.exists()
 
         except Exception as e:
             pytest.skip(f"Text watermark test skipped due to missing dependencies: {e}")

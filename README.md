@@ -8,7 +8,7 @@ A Python library for embedding and extracting watermarks in images using frequen
 ## Features
 
 - **Frequency Domain Watermarking**: Uses FFT (Fast Fourier Transform) to embed watermarks in high-frequency regions
-- **Corner-based Embedding**: Embeds watermark in the four corners of the image for robust extraction
+- **Grid-based Embedding**: Embeds watermark in multiple grid cells for robust extraction
 - **Image Watermarks**: Embed and extract image-based watermarks
 - **Text Watermarks**: Embed and extract text watermarks with OCR support
 - **Command Line Interface**: Easy-to-use CLI for batch processing
@@ -43,7 +43,7 @@ from fdwm import embed, extract, extract_text
 host_img = cv2.imread('host.jpg')
 watermark_img = cv2.imread('watermark.png')
 
-# Embed watermark in corners
+# Embed watermark using grid strategy (3x3 grid by default)
 out_path, metrics = embed(host_img, watermark_img, strength=0.1)
 print("Watermarked image saved to:", out_path)
 print("Metrics:", metrics)
@@ -64,8 +64,11 @@ extracted_text = extract_text(out_path)
 ### Command Line Interface
 
 ```bash
-# Embed image watermark
+# Embed image watermark (3x3 grid by default)
 fdwm embed host.jpg --watermark-img watermark.png
+
+# Embed with custom grid size
+fdwm embed host.jpg --watermark-img watermark.png --grid-m 4 --grid-n 4
 
 # Embed text watermark
 fdwm embed host.jpg --watermark-text "Hello World"
@@ -79,14 +82,14 @@ fdwm extract watermarked.jpg --text
 
 ## Embedding Method
 
-FDWM embeds watermarks in the four corners of the image:
+FDWM uses a grid-based embedding strategy:
 
-- **Top-left corner**: Main region with full strength
-- **Bottom-right corner**: Flipped watermark with 50% strength
-- **Top-right corner**: Horizontally flipped with 50% strength
-- **Bottom-left corner**: Vertically flipped with 50% strength
+1. **Grid Division**: The image is divided into `m × n` grid cells (default: 3×3)
+2. **Cell Processing**: Each grid cell is processed independently in the frequency domain
+3. **Corner Embedding**: Within each cell, the watermark is embedded in the top-left corner
+4. **Fusion**: During extraction, all grid cells are processed and averaged for robust recovery
 
-This provides good robustness against cropping attacks and ensures reliable extraction.
+This approach provides excellent robustness against cropping, rotation, and other geometric attacks.
 
 ## CLI Usage
 
@@ -102,6 +105,9 @@ Options:
   --scale FLOAT           Watermark scale relative to host (default: 0.25)
   --font PATH             Font file path for text watermark
   --font-size INT         Font size for text watermark
+  --grid-m INT            Number of vertical grid divisions (default: 3)
+  --grid-n INT            Number of horizontal grid divisions (default: 3)
+  --debug                 Print detailed metrics for each processed image
 ```
 
 ### Extract Command
@@ -115,6 +121,8 @@ Options:
   --output PATH           Directory to save extracted watermark images/text
   --text                  Perform OCR and output text instead of image
   --save-text             Save recognized text to .txt files
+  --grid-m INT            Number of vertical grid divisions used during embedding (default: 3)
+  --grid-n INT            Number of horizontal grid divisions used during embedding (default: 3)
 ```
 
 ## Examples
@@ -122,8 +130,11 @@ Options:
 ### Basic Usage
 
 ```bash
-# Embed watermark
+# Embed watermark with default 3x3 grid
 fdwm embed image.jpg --watermark-text "Secret"
+
+# Embed with 4x4 grid for higher robustness
+fdwm embed image.jpg --watermark-text "Secret" --grid-m 4 --grid-n 4
 
 # Extract text
 fdwm extract watermarked.jpg --text

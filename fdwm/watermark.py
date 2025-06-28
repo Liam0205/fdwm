@@ -109,8 +109,10 @@ def embed(
     font_path: Optional[str] = None,
     font_size: Optional[int] = None,
     debug: bool = False,
+    grid_m: int = 3,
+    grid_n: int = 3,
 ) -> tuple[Path, dict]:
-    """Embed watermark in frequency domain.
+    """Embed watermark in frequency domain using grid-based strategy.
 
     Parameters
     ----------
@@ -132,6 +134,10 @@ def embed(
         Font size for text watermark.
     debug : bool, default False
         If True, print detailed metrics to stdout.
+    grid_m : int, default 3
+        Number of vertical grid divisions.
+    grid_n : int, default 3
+        Number of horizontal grid divisions.
 
     Returns
     -------
@@ -142,8 +148,14 @@ def embed(
     """
     host = _read_image(host_path, gray=True)
     rows, cols = host.shape
-    wm_rows = int(rows * scale)
-    wm_cols = int(cols * scale)
+
+    # Calculate grid cell size
+    cell_rows = rows // grid_m
+    cell_cols = cols // grid_n
+
+    # Calculate watermark size for each cell
+    wm_rows = int(cell_rows * scale)
+    wm_cols = int(cell_cols * scale)
 
     if watermark_text is not None:
         watermark = _text_to_image(
@@ -161,24 +173,23 @@ def embed(
     host_dft = np.fft.fft2(host)
     host_dft_shift = np.fft.fftshift(host_dft)
 
-    # Embed in four corners
-    # 1. Top-left corner (main region, strong signal)
-    host_dft_shift[0:wm_rows, 0:wm_cols] += strength * watermark_norm
+    # Embed watermark in each grid cell
+    for i in range(grid_m):
+        for j in range(grid_n):
+            # Calculate cell boundaries
+            start_row = i * cell_rows
+            end_row = start_row + cell_rows
+            start_col = j * cell_cols
+            end_col = start_col + cell_cols
 
-    # 2. Bottom-right corner (flipped, weak signal)
-    host_dft_shift[rows - wm_rows : rows, cols - wm_cols : cols] += (
-        0.5 * strength
-    ) * np.flipud(np.fliplr(watermark_norm))
+            # Extract cell region from frequency domain
+            cell_dft = host_dft_shift[start_row:end_row, start_col:end_col]
 
-    # 3. Top-right corner (weak signal)
-    host_dft_shift[0:wm_rows, cols - wm_cols : cols] += (
-        0.5 * strength
-    ) * np.fliplr(watermark_norm)
+            # Embed in top-left corner of the cell
+            cell_dft[0:wm_rows, 0:wm_cols] += strength * watermark_norm
 
-    # 4. Bottom-left corner (weak signal)
-    host_dft_shift[rows - wm_rows : rows, 0:wm_cols] += (
-        0.5 * strength
-    ) * np.flipud(watermark_norm)
+            # Update the main frequency domain
+            host_dft_shift[start_row:end_row, start_col:end_col] = cell_dft
 
     # Inverse transform
     host_idft_shift = np.fft.ifftshift(host_dft_shift)
@@ -195,13 +206,19 @@ def embed(
     max_pixel_diff = float(np.max(diff))
     p90_pixel_diff = float(np.percentile(diff, 90))
     mse = np.mean((img_back.astype(np.float32) - host.astype(np.float32)) ** 2)
-    psnr = float(20 * np.log10(255.0 / np.sqrt(mse))) if mse > 0 else float('inf')
+    psnr = float(20 * np.log10(255.0 / np.sqrt(mse))) if mse > 0 else float("inf")
     metrics = {
-        'mean_pixel_diff': mean_pixel_diff,
-        'max_pixel_diff': max_pixel_diff,
-        'p90_pixel_diff': p90_pixel_diff,
-        'psnr': psnr,
+        "mean_pixel_diff": mean_pixel_diff,
+        "max_pixel_diff": max_pixel_diff,
+        "p90_pixel_diff": p90_pixel_diff,
+        "psnr": psnr,
     }
+
+    if debug:
+        print(f"Mean pixel diff: {mean_pixel_diff:.2f}")
+        print(f"Max pixel diff: {max_pixel_diff:.2f}")
+        print(f"90th percentile pixel diff: {p90_pixel_diff:.2f}")
+        print(f"PSNR: {psnr:.2f} dB")
 
     return output_path, metrics
 
@@ -213,8 +230,10 @@ def extract(
     scale: Optional[float] = 0.25,
     watermark_shape: Optional[Tuple[int, int]] = None,
     output_path: Optional[str | Path] = None,
+    grid_m: int = 3,
+    grid_n: int = 3,
 ) -> np.ndarray:
-    """Extract watermark image from a watermarked picture.
+    """Extract watermark image from a watermarked picture using grid-based strategy.
 
     Parameters
     ----------
@@ -228,6 +247,10 @@ def extract(
         Watermark shape (rows, cols).
     output_path : str | Path, optional
         Path to save extracted watermark.
+    grid_m : int, default 3
+        Number of vertical grid divisions used during embedding.
+    grid_n : int, default 3
+        Number of horizontal grid divisions used during embedding.
     """
     img = _read_image(watermarked_path, gray=True)
     rows, cols = img.shape
@@ -236,43 +259,45 @@ def extract(
         raise ValueError(
             "Must provide either scale or watermark_shape to determine watermark size."
         )
+
+    # Calculate grid cell size
+    cell_rows = rows // grid_m
+    cell_cols = cols // grid_n
+
     if scale is not None:
-        wm_rows = int(rows * scale)
-        wm_cols = int(cols * scale)
+        wm_rows = int(cell_rows * scale)
+        wm_cols = int(cell_cols * scale)
     else:
         wm_rows, wm_cols = watermark_shape  # type: ignore[misc]
 
     img_dft = np.fft.fft2(img)
     img_dft_shift = np.fft.fftshift(img_dft)
 
-    # Extract from four corner regions
-    regions = [
-        img_dft_shift[0:wm_rows, 0:wm_cols],  # Top-left (main)
-        img_dft_shift[rows - wm_rows : rows, cols - wm_cols : cols],  # Bottom-right
-        img_dft_shift[0:wm_rows, cols - wm_cols : cols],  # Top-right
-        img_dft_shift[rows - wm_rows : rows, 0:wm_cols],  # Bottom-left
-    ]
+    # Extract from all grid cells and average
+    all_extracted = []
 
-    # Extract magnitude from each region
-    wm_candidates = []
-    for i, r in enumerate(regions):
-        magnitude = np.abs(r)
-        # Apply strength normalization
-        if i == 0:  # Main region (top-left)
+    for i in range(grid_m):
+        for j in range(grid_n):
+            # Calculate cell boundaries
+            start_row = i * cell_rows
+            end_row = start_row + cell_rows
+            start_col = j * cell_cols
+            end_col = start_col + cell_cols
+
+            # Extract cell region from frequency domain
+            cell_dft = img_dft_shift[start_row:end_row, start_col:end_col]
+
+            # Extract from top-left corner of the cell
+            region = cell_dft[0:wm_rows, 0:wm_cols]
+
+            # Extract magnitude and normalize
+            magnitude = np.abs(region)
             normalized = magnitude / strength
-        else:  # Corner regions
-            normalized = magnitude / (0.5 * strength)
-        # Apply inverse transformations for corner regions
-        if i == 1:  # Bottom-right: flip both axes
-            normalized = np.flipud(np.fliplr(normalized))
-        elif i == 2:  # Top-right: flip horizontally
-            normalized = np.fliplr(normalized)
-        elif i == 3:  # Bottom-left: flip vertically
-            normalized = np.flipud(normalized)
-        wm_candidates.append(normalized)
 
-    # Average all regions
-    fused = np.mean(wm_candidates, axis=0)
+            all_extracted.append(normalized)
+
+    # Average all grid cells
+    fused = np.mean(all_extracted, axis=0)
 
     # Normalize
     fused = np.clip(fused, 0, None)
@@ -297,8 +322,10 @@ def extract_text(
     watermark_shape: Optional[Tuple[int, int]] = None,
     lang: str = "chi_sim+eng",
     tesseract_cmd: Optional[str] = None,
+    grid_m: int = 3,
+    grid_n: int = 3,
 ) -> str:
-    """Extract text watermark from watermarked image.
+    """Extract text watermark from watermarked image using grid-based strategy.
 
     This function first calls :func:`extract` to get watermark image, then uses *Tesseract OCR* to recognize text.
 
@@ -311,6 +338,8 @@ def extract_text(
         scale=scale,
         watermark_shape=watermark_shape,
         output_path=None,
+        grid_m=grid_m,
+        grid_n=grid_n,
     )
 
     # preprocessing: binarization + scaling

@@ -37,6 +37,8 @@ def _cmd_embed(args):
                 font_path=str(args.font) if args.font else None,
                 font_size=args.font_size,
                 debug=args.debug,
+                grid_m=args.grid_m,
+                grid_n=args.grid_n,
             )
             print(f"✔ Watermark applied: {img_path}")
             if args.debug:
@@ -65,6 +67,8 @@ def _cmd_extract(args):
                     watermarked_path=img_path,
                     strength=args.strength,
                     scale=args.scale,
+                    grid_m=args.grid_m,
+                    grid_n=args.grid_n,
                 )
                 print(f"[{img_path}] -> {txt}")
                 if args.save_text:
@@ -76,6 +80,8 @@ def _cmd_extract(args):
                     strength=args.strength,
                     scale=args.scale,
                     output_path=out_path,
+                    grid_m=args.grid_m,
+                    grid_n=args.grid_n,
                 )
                 print(f"✔ Watermark image saved: {out_path}")
         except Exception as e:
@@ -106,7 +112,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_embed.add_argument("--scale", type=float, default=0.25)
     p_embed.add_argument("--font", type=Path)
     p_embed.add_argument("--font-size", type=int)
-    p_embed.add_argument("--debug", action="store_true", help="Print detailed metrics for each processed image")
+    p_embed.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print detailed metrics for each processed image",
+    )
+    p_embed.add_argument(
+        "--grid-m",
+        type=int,
+        default=3,
+        help="Number of vertical grid divisions (default: 3)",
+    )
+    p_embed.add_argument(
+        "--grid-n",
+        type=int,
+        default=3,
+        help="Number of horizontal grid divisions (default: 3)",
+    )
     p_embed.set_defaults(func=_cmd_embed)
 
     # extract subcommand
@@ -124,6 +146,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_ext.add_argument(
         "--save-text", action="store_true", help="Save recognized text to .txt files"
+    )
+    p_ext.add_argument(
+        "--grid-m",
+        type=int,
+        default=3,
+        help="Number of vertical grid divisions used during embedding (default: 3)",
+    )
+    p_ext.add_argument(
+        "--grid-n",
+        type=int,
+        default=3,
+        help="Number of horizontal grid divisions used during embedding (default: 3)",
     )
     p_ext.set_defaults(func=_cmd_extract)
 

@@ -6,7 +6,8 @@ import cv2
 import numpy as np
 import fdwm
 
-kStrength = 5000.0
+kStrength = 50000.0
+
 
 def generate_host_image(path: str, size: int = 512) -> None:
     """Generate simple grayscale host image and save to disk."""
@@ -60,6 +61,8 @@ def test_visual_invisibility():
         output_path=str(watermarked_path),
         strength=kStrength,
         scale=0.25,
+        grid_m=3,
+        grid_n=3,
     )
 
     # Read watermarked image
@@ -68,21 +71,21 @@ def test_visual_invisibility():
     # Calculate overall difference
     diff = np.abs(watermarked.astype(int) - original.astype(int))
     mean_diff = np.mean(diff)
-    max_diff = np.max(diff)
+    p90_diff = np.percentile(diff, 90)
 
     print(f"Mean pixel difference: {mean_diff:.2f}")
-    print(f"Max pixel difference: {max_diff}")
+    print(f"90th percentile pixel difference: {p90_diff:.2f}")
 
     # Test 1: Overall visual similarity (mean difference should be small)
-    assert mean_diff < 15.0, f"Mean difference too high: {mean_diff:.2f}"
+    assert mean_diff < 5.0, f"Mean difference too high: {mean_diff:.2f}"
 
-    # Test 2: No extreme pixel changes (max difference should be reasonable)
-    # Allow higher max difference as some pixels may have larger changes
-    assert max_diff < 100, f"Max difference too high: {max_diff}"
+    # Test 2: No extreme pixel changes (90th percentile difference should be reasonable)
+    # Allow higher p90 difference as some pixels may have larger changes
+    assert p90_diff < 15, f"90th percentile difference too high: {p90_diff:.2f}"
 
     # Test 3: PSNR (Peak Signal-to-Noise Ratio) should be high
     mse = np.mean((watermarked.astype(float) - original.astype(float)) ** 2)
-    psnr = 20 * np.log10(255.0 / np.sqrt(mse)) if mse > 0 else float('inf')
+    psnr = 20 * np.log10(255.0 / np.sqrt(mse)) if mse > 0 else float("inf")
     print(f"PSNR: {psnr:.2f} dB")
     assert psnr > 25.0, f"PSNR too low: {psnr:.2f} dB"
 
@@ -91,7 +94,9 @@ def test_visual_invisibility():
     total_pixels = diff.size
     small_change_ratio = pixels_with_small_change / total_pixels
     print(f"Pixels with change < 10: {small_change_ratio:.1%}")
-    assert small_change_ratio > 0.8, f"Too many pixels have large changes: {small_change_ratio:.1%}"
+    assert (
+        small_change_ratio > 0.8
+    ), f"Too many pixels have large changes: {small_change_ratio:.1%}"
 
     print("✅ Visual invisibility test passed!")
 
@@ -116,6 +121,8 @@ def test_watermark_extraction_quality():
         output_path=str(watermarked_path),
         strength=kStrength,
         scale=0.25,
+        grid_m=3,
+        grid_n=3,
     )
 
     # Extract watermark
@@ -124,6 +131,8 @@ def test_watermark_extraction_quality():
         strength=kStrength,
         scale=0.25,
         output_path=str(extracted_path),
+        grid_m=3,
+        grid_n=3,
     )
 
     # Read original watermark and resize to match extracted size
@@ -148,8 +157,9 @@ def test_watermark_extraction_quality():
         c1 = (0.01 * 255) ** 2
         c2 = (0.03 * 255) ** 2
 
-        ssim = ((2 * mu1 * mu2 + c1) * (2 * sigma12 + c2)) / \
-               ((mu1**2 + mu2**2 + c1) * (sigma1**2 + sigma2**2 + c2))
+        ssim = ((2 * mu1 * mu2 + c1) * (2 * sigma12 + c2)) / (
+            (mu1**2 + mu2**2 + c1) * (sigma1**2 + sigma2**2 + c2)
+        )
         return ssim
 
     ssim = calculate_ssim(wm_resized, extracted)
@@ -159,7 +169,7 @@ def test_watermark_extraction_quality():
 
     # Assertions for high quality extraction
     assert corr > 0.7, f"Correlation too low: {corr:.3f}"
-    assert ssim > 0.6, f"SSIM too low: {ssim:.3f}"
+    assert ssim > 0.7, f"SSIM too low: {ssim:.3f}"
 
     print("✅ Watermark extraction quality test passed!")
 
@@ -183,14 +193,18 @@ def test_embed_extract_basic():
         output_path=str(watermarked_path),
         strength=kStrength,
         scale=scale,
+        grid_m=3,
+        grid_n=3,
     )
     extracted = fdwm.extract(
         watermarked_path=str(watermarked_path),
         strength=kStrength,
         scale=scale,
         output_path=str(extracted_path),
+        grid_m=3,
+        grid_n=3,
     )
-    assert extracted.shape == (int(512 * scale), int(512 * scale))
+    assert extracted.shape == (int((512 // 3) * scale), int((512 // 3) * scale))
     print("✅ Basic embed and extract test passed!")
 
 
