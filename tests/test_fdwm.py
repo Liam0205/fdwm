@@ -37,9 +37,67 @@ def generate_watermark(path: str, size: int = 128) -> None:
     cv2.imwrite(path, wm)
 
 
-def test_embed_extract():
-    """Complete workflow test: embed -> extract -> calculate correlation coefficient."""
-    tmp_dir = Path("tmp")
+def test_visual_invisibility():
+    """Test that watermarking causes minimal visual difference in host image."""
+    tmp_dir = Path("tmp_visual")
+    tmp_dir.mkdir(exist_ok=True)
+
+    host_path = tmp_dir / "host.png"
+    wm_path = tmp_dir / "wm.png"
+    watermarked_path = tmp_dir / "host_wm.png"
+
+    generate_host_image(str(host_path))
+    generate_watermark(str(wm_path))
+
+    # Read original host image
+    original = cv2.imread(str(host_path), cv2.IMREAD_GRAYSCALE)
+
+    # Embed watermark
+    fdwm.embed(
+        host_path=str(host_path),
+        watermark_path=str(wm_path),
+        output_path=str(watermarked_path),
+        strength=5000.0,
+        scale=0.25,
+    )
+
+    # Read watermarked image
+    watermarked = cv2.imread(str(watermarked_path), cv2.IMREAD_GRAYSCALE)
+
+    # Calculate overall difference
+    diff = np.abs(watermarked.astype(int) - original.astype(int))
+    mean_diff = np.mean(diff)
+    max_diff = np.max(diff)
+
+    print(f"Mean pixel difference: {mean_diff:.2f}")
+    print(f"Max pixel difference: {max_diff}")
+
+    # Test 1: Overall visual similarity (mean difference should be small)
+    assert mean_diff < 15.0, f"Mean difference too high: {mean_diff:.2f}"
+
+    # Test 2: No extreme pixel changes (max difference should be reasonable)
+    # Allow higher max difference as some pixels may have larger changes
+    assert max_diff < 100, f"Max difference too high: {max_diff}"
+
+    # Test 3: PSNR (Peak Signal-to-Noise Ratio) should be high
+    mse = np.mean((watermarked.astype(float) - original.astype(float)) ** 2)
+    psnr = 20 * np.log10(255.0 / np.sqrt(mse)) if mse > 0 else float('inf')
+    print(f"PSNR: {psnr:.2f} dB")
+    assert psnr > 25.0, f"PSNR too low: {psnr:.2f} dB"
+
+    # Test 4: Most pixels should have minimal change
+    pixels_with_small_change = np.sum(diff < 10)
+    total_pixels = diff.size
+    small_change_ratio = pixels_with_small_change / total_pixels
+    print(f"Pixels with change < 10: {small_change_ratio:.1%}")
+    assert small_change_ratio > 0.8, f"Too many pixels have large changes: {small_change_ratio:.1%}"
+
+    print("✅ Visual invisibility test passed!")
+
+
+def test_watermark_extraction_quality():
+    """Test that extracted watermark is highly similar to original."""
+    tmp_dir = Path("tmp_extraction")
     tmp_dir.mkdir(exist_ok=True)
 
     host_path = tmp_dir / "host.png"
@@ -50,7 +108,7 @@ def test_embed_extract():
     generate_host_image(str(host_path))
     generate_watermark(str(wm_path))
 
-    # embed
+    # Embed watermark
     fdwm.embed(
         host_path=str(host_path),
         watermark_path=str(wm_path),
@@ -59,7 +117,7 @@ def test_embed_extract():
         scale=0.25,
     )
 
-    # extract
+    # Extract watermark
     extracted = fdwm.extract(
         watermarked_path=str(watermarked_path),
         strength=5000.0,
@@ -67,20 +125,48 @@ def test_embed_extract():
         output_path=str(extracted_path),
     )
 
-    # resize original watermark to same size
+    # Read original watermark and resize to match extracted size
     wm_original = cv2.imread(str(wm_path), cv2.IMREAD_GRAYSCALE)
     wm_resized = cv2.resize(
         wm_original, extracted.shape[::-1], interpolation=cv2.INTER_AREA
     )
 
-    # calculate Pearson correlation coefficient
+    # Calculate multiple similarity metrics
+    # 1. Pearson correlation coefficient
     corr = np.corrcoef(wm_resized.flatten(), extracted.flatten())[0, 1]
-    print(
-        f"Correlation coefficient between original and extracted watermark: {corr:.3f}"
-    )
 
-    assert corr > 0.5, "Watermark extraction correlation too low, possible issue."
-    print("✅ Library functionality test passed!")
+    # 2. Structural Similarity Index (SSIM-like)
+    def calculate_ssim(img1, img2):
+        """Calculate a simplified SSIM-like metric."""
+        mu1 = np.mean(img1)
+        mu2 = np.mean(img2)
+        sigma1 = np.std(img1)
+        sigma2 = np.std(img2)
+        sigma12 = np.mean((img1 - mu1) * (img2 - mu2))
+
+        c1 = (0.01 * 255) ** 2
+        c2 = (0.03 * 255) ** 2
+
+        ssim = ((2 * mu1 * mu2 + c1) * (2 * sigma12 + c2)) / \
+               ((mu1**2 + mu2**2 + c1) * (sigma1**2 + sigma2**2 + c2))
+        return ssim
+
+    ssim = calculate_ssim(wm_resized, extracted)
+
+    # 3. Mean Squared Error
+    mse = np.mean((wm_resized.astype(float) - extracted.astype(float)) ** 2)
+
+    print(f"Correlation coefficient: {corr:.3f}")
+    print(f"SSIM-like metric: {ssim:.3f}")
+    print(f"Mean Squared Error: {mse:.2f}")
+
+    # Assertions for high quality extraction
+    assert corr > 0.7, f"Correlation too low: {corr:.3f}"
+    assert ssim > 0.6, f"SSIM too low: {ssim:.3f}"
+    assert mse < 1000, f"MSE too high: {mse:.2f}"
+
+    print("✅ Watermark extraction quality test passed!")
+
 
 
 def test_embed_extract_all_regions():
@@ -181,5 +267,6 @@ def test_embed_extract_all_regions():
 
 
 if __name__ == "__main__":
-    test_embed_extract()
     test_embed_extract_all_regions()
+    test_visual_invisibility()
+    test_watermark_extraction_quality()
